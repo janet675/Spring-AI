@@ -4,7 +4,33 @@ spring:
   ai:
     ollama:
       base-url: http://localhost:11434
-      chat:
-        model: deepseek-r1:1.5b
+
+    vectorstore:
+     milvus:
+      client:
+        host: "localhost"
+        port: 19530
+        username: "root"
+        password: "milvus"
+      databaseName: "default"
+      collectionName: "vector_store"
+      embeddingDimension: 1536
+      indexType: IVF_FLAT
+      metricType: COSINE
+
+
+
+
+
+
 server:
   port: 8000
+milvus:
+  host: 192.168.3.17
+  port: 19530
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: debug
+    com.itheima.ai: debug
+
+    
