@@ -1,34 +1,37 @@
 spring:
   application:
     name: AI
+  datasource:
+    url: jdbc:mysql://localhost:3306/db?useSSL=false&serverTimezone=UTC
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: lyk
+    password: 12345
+
+
   ai:
     ollama:
       base-url: http://localhost:11434
       chat:
         model: deepseek-r1:1.5b
-
-      client:
-        name: ai-demo
-        type: SYNC
-        toolcallback:
-          enabled: true
-
-        request-timeout: 30000
-        enabled: true
-        sse:
-          connections:
-            serve1.url: https://mcp-09724909-442f-4b85.api-inference.modelscope.cn
+      embedding:
+        options:
+          model: mxbai-embed-large
 
     vectorstore:
-      pgvector:
+     chroma:
+       client:
+         host: http://localhost
+         port: 8000
        initialize-schema: true
-       index-type: HNSW
-       distance-type: COSINE_DISTANCE
-       dimensions: 1536
-       max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+
+
+
+
+
+
 
 server:
-  port: 8000
+  port: 8001
 milvus:
   host: 192.168.3.17
   port: 19530
