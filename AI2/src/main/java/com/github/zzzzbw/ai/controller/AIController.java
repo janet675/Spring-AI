@@ -1,16 +1,11 @@
 package com.github.zzzzbw.ai.controller;
 
-import com.github.zzzzbw.ai.Dao.FileDao;
 import com.github.zzzzbw.ai.Service.FileService;
+import com.github.zzzzbw.ai.entity.FileDocumentInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.document.DocumentReader;
-import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.io.*;
 
@@ -19,23 +14,15 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/milvus2")
@@ -53,68 +40,50 @@ public class AIController {
 
     @Autowired
     FileService fileService;
-    @Autowired
-    FileDao fileDao;
 
 
 
 
     @PostMapping("/upload")
-    public void upload(MultipartFile file) {
+    public String upload(MultipartFile file) {
 
        String path=fileService.uploadFile(file);
 
        String file_name=file.getOriginalFilename();
        String type = file_name.substring(file_name.lastIndexOf("."));
        fileService.updocument(path,type,file_name);
+       return path;
 
 
     }
     @PostMapping("/select")
-    public void select() {
-        Scanner sc=new Scanner(System.in);
-        String fileName=sc.next();
-        fileDao.selectid(fileName);
+    public List<FileDocumentInfo> select(@RequestParam(value = "name", required = false) String fileName,
+                                         @RequestParam(value = "content",required = false) String content) {
+
+       List<FileDocumentInfo> list1 = fileService.selectFileDocumentInfoByCondition(fileName, content);
+       return list1;
+
+    }
+
+    @PostMapping("/delete")
+    public int delete(@RequestParam("id") int id) {
+       int reid= fileService.deleteFile(id);
+       //返回删除id
+       return reid;
+    }
+
+    @PostMapping("/update")
+    public String update(@RequestParam("documentContent")  String documentContent,@RequestParam("id") String id ) {
+
+
+       String doc=fileService.updatedocument(documentContent,id);
+       return doc;
+
 
     }
 
 
-    /**
-     * 处理PDF文档的解析、分割和嵌入存储。
-     * 使用 PagePdfDocumentReader 解析PDF文档并生成 Document 列表。
-     * 使用 TokenTextSplitter 将文档分割成更小的部分。
-     * 将分割后的文档添加到向量存储中，以便后续检索和生成。
-     */
-    @GetMapping("/insertDocuments")
-    public void insertDocuments() throws IOException, SQLException {
-        // 1. parse document
 
-        StringBuilder text = new StringBuilder();
-        ClassLoader classLoader = getClass().getClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream("AI.pdf");
-        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-
-
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                text.append(line);
-            }
-        }
-
-        vectorStore.write(Arrays.stream(text.toString().split("\n")).map(Document::new).toList());
-
-        DocumentReader reader = new PagePdfDocumentReader(springAiResource);
-        List<Document> documents = reader.get();
-        log.info("{} documents loaded", documents.size());
-
-        // 2. split trunks
-        List<Document> splitDocuments = new TokenTextSplitter().apply(documents);
-        log.info("{} documents split", splitDocuments.size());
-
-        // 3. create embedding and store to vector store
-        log.info("create embedding and save to vector store");
-        vectorStore.add(splitDocuments);
-    }
 
     /**
      * 根据用户输入的消息生成JSON格式的聊天响应。
