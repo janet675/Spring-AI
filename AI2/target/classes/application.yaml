@@ -28,6 +28,13 @@ spring:
          host: http://localhost
          port: 8000
        initialize-schema: true
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+            platform: mariadb
+
 
 
 

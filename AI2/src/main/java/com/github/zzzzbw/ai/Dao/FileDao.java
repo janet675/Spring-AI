@@ -19,8 +19,8 @@ public class FileDao {
 
 
     public void insertFile(FileInfo fileInfo) {
-        String sql = "insert into SPRING_AI_FILE (file_name, file_path, type, file_size," +
-                " upload_time, status ) values (?,?,?,?" +
+        String sql = "insert into SPRING_AI_FILE (file_name, filepath, type, fileSize," +
+                " uploadTime, status ) values (?,?,?,?" +
                 ",?,?)";
         Object args[] = {
 

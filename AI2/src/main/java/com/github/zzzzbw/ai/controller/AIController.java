@@ -4,7 +4,14 @@ import com.github.zzzzbw.ai.Service.FileService;
 import com.github.zzzzbw.ai.entity.FileDocumentInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.*;
@@ -40,6 +47,10 @@ public class AIController {
 
     @Autowired
     FileService fileService;
+    @Autowired
+   JdbcChatMemoryRepository  chatMemoryRepository;
+
+
 
 
 
@@ -81,55 +92,40 @@ public class AIController {
 
 
     }
+    @PostMapping("/ask")
+    public String ask(@RequestParam("message") String message) throws IOException {
 
 
 
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
+                .maxMessages(10)
+                .build();
 
-    /**
-     * 根据用户输入的消息生成JSON格式的聊天响应。
-     * 创建一个 SearchRequest 对象，设置返回最相关的前2个结果。
-     * 从 systemResource 中读取提示模板。
-     * 使用 ChatClient 构建聊天客户端，调用 RetrievalRerankAdvisor 进行检索和重排序，并生成最终的聊天响应内容。
-     */
-    @GetMapping(value = "/ragJsonText", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
-    public String ragJsonText(@RequestParam(value = "message",
-            defaultValue = "如何使用spring ai alibaba?") String message) throws IOException {
 
-        SearchRequest searchRequest = SearchRequest.builder().topK(2).build();
 
-        String promptTemplate = systemResource.getContentAsString(StandardCharsets.UTF_8);
+        var qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+                .searchRequest(SearchRequest.builder().similarityThreshold(0.4d).topK(3).build())
+                .build();
+
+
 
         return ChatClient.builder(chatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build().prompt()
 
-                .build()
-                .prompt()
-                .advisors(new QuestionAnswerAdvisor(vectorStore))
+                .advisors(qaAdvisor)
                 .user(message)
                 .call()
                 .content();
+
+
+
+
+
     }
 
-    /**
-     * 根据用户输入的消息生成流式聊天响应。
-     * 类似于 ragJsonText 方法，但使用 stream() 方法以流的形式返回聊天响应。
-     * 返回类型为 Flux<ChatResponse>，适合需要实时更新的场景。
-     */
-    @GetMapping(value = "/ragStream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ChatResponse> ragStream(@RequestParam(value = "message",
-            defaultValue = "如何使用spring ai alibaba?") String message) throws IOException {
 
-        SearchRequest searchRequest = SearchRequest.builder().topK(2).build();
 
-        String promptTemplate = systemResource.getContentAsString(StandardCharsets.UTF_8);
-
-        return ChatClient.builder(chatModel)
-
-                .build()
-                .prompt()
-                .advisors(new QuestionAnswerAdvisor(vectorStore))
-                .user(message)
-                .stream()
-                .chatResponse();
-    }
 
 }
